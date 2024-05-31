@@ -203,8 +203,6 @@ func AnnounceIPs(ifName string, ipConfigs []*current.IPConfig) error {
 func WaitForCarrier(ifName string, waitTime time.Duration) bool {
 	var sleepDuration time.Duration
 
-	myNetLink := MyNetlink{}
-
 	start := time.Now()
 
 	for time.Since(start) < waitTime {
@@ -216,7 +214,7 @@ func WaitForCarrier(ifName string, waitTime time.Duration) bool {
 			sleepDuration += sleepDuration / 2
 		}
 
-		linkObj, err := myNetLink.LinkByName(ifName)
+		linkObj, err := netLinkLib.LinkByName(ifName)
 		if err != nil {
 			return false
 		}
