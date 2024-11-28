@@ -270,6 +270,26 @@ func cmdDel(args *skel.CmdArgs) error {
 
 	sm := sriov.NewSriovManager()
 
+	netns, err := ns.GetNS(args.Netns)
+	if err != nil {
+		// according to:
+		// https://github.com/kubernetes/kubernetes/issues/43014#issuecomment-287164444
+		// if provided path does not exist (e.x. when node was restarted)
+		// plugin should silently return with success after releasing
+		// IPAM resources
+		_, ok := err.(ns.NSPathNotExistErr)
+		if ok {
+			logging.Debug("Exiting as the network namespace does not exists anymore",
+				"func", "cmdDel",
+				"netConf.DeviceID", netConf.DeviceID,
+				"args.Netns", args.Netns)
+			return nil
+		}
+
+		return fmt.Errorf("failed to open netns %s: %q", netns, err)
+	}
+	defer netns.Close()
+
 	logging.Debug("Reset VF configuration",
 		"func", "cmdDel",
 		"netConf.DeviceID", netConf.DeviceID)
@@ -282,26 +302,6 @@ func cmdDel(args *skel.CmdArgs) error {
 	}
 
 	if !netConf.DPDKMode {
-		netns, err := ns.GetNS(args.Netns)
-		if err != nil {
-			// according to:
-			// https://github.com/kubernetes/kubernetes/issues/43014#issuecomment-287164444
-			// if provided path does not exist (e.x. when node was restarted)
-			// plugin should silently return with success after releasing
-			// IPAM resources
-			_, ok := err.(ns.NSPathNotExistErr)
-			if ok {
-				logging.Debug("Exiting as the network namespace does not exists anymore",
-					"func", "cmdDel",
-					"netConf.DeviceID", netConf.DeviceID,
-					"args.Netns", args.Netns)
-				return nil
-			}
-
-			return fmt.Errorf("failed to open netns %s: %q", netns, err)
-		}
-		defer netns.Close()
-
 		logging.Debug("Release the VF",
 			"func", "cmdDel",
 			"netConf.DeviceID", netConf.DeviceID,
